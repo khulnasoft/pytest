@@ -1,10 +1,9 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
+from typing import List
 from unittest import IsolatedAsyncioTestCase
 
 
-teardowns: list[None] = []
+teardowns: List[None] = []
 
 
 class AsyncArguments(IsolatedAsyncioTestCase):

@@ -1,11 +1,10 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
-from collections.abc import Callable
 import inspect
 from pathlib import Path
 import sys
 import textwrap
+from typing import Callable
+from typing import Optional
 
 from _pytest.doctest import _get_checker
 from _pytest.doctest import _is_main_py
@@ -225,7 +224,11 @@ class TestDoctests:
                 "Traceback (most recent call last):",
                 '  File "*/doctest.py", line *, in __run',
                 "    *",
-                *((" *^^^^*", " *", " *") if sys.version_info >= (3, 13) else ()),
+                *(
+                    (" *^^^^*",)
+                    if (3, 11, 0, "beta", 4) > sys.version_info >= (3, 11)
+                    else ()
+                ),
                 '  File "<doctest test_doctest_unexpected_exception.txt[1]>", line 1, in <module>',
                 "ZeroDivisionError: division by zero",
                 "*/test_doctest_unexpected_exception.txt:2: UnexpectedException",
@@ -382,7 +385,7 @@ class TestDoctests:
                 "*= FAILURES =*",
                 "*_ [[]doctest[]] test_doctest_linedata_on_property.Sample.some_property _*",
                 "004 ",
-                "005 *>>> Sample().some_property",
+                "005         >>> Sample().some_property",
                 "Expected:",
                 "    'another thing'",
                 "Got:",
@@ -393,7 +396,7 @@ class TestDoctests:
             ]
         )
 
-    def test_doctest_no_linedata_on_overridden_property(self, pytester: Pytester):
+    def test_doctest_no_linedata_on_overriden_property(self, pytester: Pytester):
         pytester.makepyfile(
             """
             class Sample(object):
@@ -411,7 +414,7 @@ class TestDoctests:
         result.stdout.fnmatch_lines(
             [
                 "*= FAILURES =*",
-                "*_ [[]doctest[]] test_doctest_no_linedata_on_overridden_property.Sample.some_property _*",
+                "*_ [[]doctest[]] test_doctest_no_linedata_on_overriden_property.Sample.some_property _*",
                 "EXAMPLE LOCATION UNKNOWN, not showing all tests of that example",
                 "[?][?][?] >>> Sample().some_property",
                 "Expected:",
@@ -419,7 +422,7 @@ class TestDoctests:
                 "Got:",
                 "    'something'",
                 "",
-                "*/test_doctest_no_linedata_on_overridden_property.py:None: DocTestFailure",
+                "*/test_doctest_no_linedata_on_overriden_property.py:None: DocTestFailure",
                 "*= 1 failed in *",
             ]
         )
@@ -1157,7 +1160,7 @@ class TestDoctestSkips:
                 pytester.maketxtfile(doctest)
             else:
                 assert mode == "module"
-                pytester.makepyfile(f'"""\n{doctest}"""')
+                pytester.makepyfile('"""\n%s"""' % doctest)
 
         return makeit
 
@@ -1328,7 +1331,7 @@ class TestDoctestAutoUseFixtures:
         params = ("--doctest-modules",) if enable_doctest else ()
         passes = 3 if enable_doctest else 2
         result = pytester.runpytest(*params)
-        result.stdout.fnmatch_lines([f"*=== {passes} passed in *"])
+        result.stdout.fnmatch_lines(["*=== %d passed in *" % passes])
 
     @pytest.mark.parametrize("scope", SCOPES)
     @pytest.mark.parametrize("autouse", [True, False])
@@ -1596,7 +1599,7 @@ class Broken:
     "stop", [None, _is_mocked, lambda f: None, lambda f: False, lambda f: True]
 )
 def test_warning_on_unwrap_of_broken_object(
-    stop: Callable[[object], object] | None,
+    stop: Optional[Callable[[object], object]],
 ) -> None:
     bad_instance = Broken()
     assert inspect.unwrap.__module__ == "inspect"

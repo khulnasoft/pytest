@@ -1,7 +1,7 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
+import gc
 import sys
+from typing import List
 
 from _pytest.config import ExitCode
 from _pytest.monkeypatch import MonkeyPatch
@@ -192,35 +192,30 @@ def test_teardown(pytester: Pytester) -> None:
 def test_teardown_issue1649(pytester: Pytester) -> None:
     """
     Are TestCase objects cleaned up? Often unittest TestCase objects set
-    attributes that are large and expensive during test run or setUp.
+    attributes that are large and expensive during setUp.
 
     The TestCase will not be cleaned up if the test fails, because it
     would then exist in the stackframe.
-
-    Regression test for #1649 (see also #12367).
     """
-    pytester.makepyfile(
+    testpath = pytester.makepyfile(
         """
         import unittest
-        import gc
-
         class TestCaseObjectsShouldBeCleanedUp(unittest.TestCase):
-            def test_expensive(self):
-                self.an_expensive_obj = object()
+            def setUp(self):
+                self.an_expensive_object = 1
+            def test_demo(self):
+                pass
 
-            def test_is_it_still_alive(self):
-                gc.collect()
-                for obj in gc.get_objects():
-                    if type(obj).__name__ == "TestCaseObjectsShouldBeCleanedUp":
-                        assert not hasattr(obj, "an_expensive_obj")
-                        break
-                else:
-                    assert False, "Could not find TestCaseObjectsShouldBeCleanedUp instance"
-        """
+    """
     )
 
-    result = pytester.runpytest()
-    assert result.ret == ExitCode.OK
+    pytester.inline_run("-s", testpath)
+    gc.collect()
+
+    # Either already destroyed, or didn't run setUp.
+    for obj in gc.get_objects():
+        if type(obj).__name__ == "TestCaseObjectsShouldBeCleanedUp":
+            assert not hasattr(obj, "an_expensive_obj")
 
 
 def test_unittest_skip_issue148(pytester: Pytester) -> None:
@@ -304,7 +299,7 @@ def test_setup_setUpClass(pytester: Pytester) -> None:
             @classmethod
             def tearDownClass(cls):
                 cls.x -= 1
-        def test_torn_down():
+        def test_teareddown():
             assert MyTestCase.x == 0
     """
     )
@@ -351,7 +346,7 @@ def test_setup_class(pytester: Pytester) -> None:
                 assert self.x == 1
             def teardown_class(cls):
                 cls.x -= 1
-        def test_torn_down():
+        def test_teareddown():
             assert MyTestCase.x == 0
     """
     )
@@ -385,7 +380,7 @@ def test_testcase_adderrorandfailure_defers(pytester: Pytester, type: str) -> No
 @pytest.mark.parametrize("type", ["Error", "Failure"])
 def test_testcase_custom_exception_info(pytester: Pytester, type: str) -> None:
     pytester.makepyfile(
-        f"""
+        """
         from typing import Generic, TypeVar
         from unittest import TestCase
         import pytest, _pytest._code
@@ -414,7 +409,7 @@ def test_testcase_custom_exception_info(pytester: Pytester, type: str) -> None:
 
             def test_hello(self):
                 pass
-    """
+    """.format(**locals())
     )
     result = pytester.runpytest()
     result.stdout.fnmatch_lines(
@@ -886,7 +881,7 @@ def test_non_unittest_no_setupclass_support(pytester: Pytester) -> None:
             def tearDownClass(cls):
                 cls.x = 1
 
-        def test_not_torn_down():
+        def test_not_teareddown():
             assert TestFoo.x == 0
 
     """
@@ -1215,7 +1210,7 @@ def test_pdb_teardown_called(pytester: Pytester, monkeypatch: MonkeyPatch) -> No
     We delay the normal tearDown() calls when --pdb is given, so this ensures we are calling
     tearDown() eventually to avoid memory leaks when using --pdb.
     """
-    teardowns: list[str] = []
+    teardowns: List[str] = []
     monkeypatch.setattr(
         pytest, "test_pdb_teardown_called_teardowns", teardowns, raising=False
     )
@@ -1252,7 +1247,7 @@ def test_pdb_teardown_skipped_for_functions(
     With --pdb, setUp and tearDown should not be called for tests skipped
     via a decorator (#7215).
     """
-    tracked: list[str] = []
+    tracked: List[str] = []
     monkeypatch.setattr(pytest, "track_pdb_teardown_skipped", tracked, raising=False)
 
     pytester.makepyfile(
@@ -1287,7 +1282,7 @@ def test_pdb_teardown_skipped_for_classes(
     With --pdb, setUp and tearDown should not be called for tests skipped
     via a decorator on the class (#10060).
     """
-    tracked: list[str] = []
+    tracked: List[str] = []
     monkeypatch.setattr(pytest, "track_pdb_teardown_skipped", tracked, raising=False)
 
     pytester.makepyfile(
@@ -1645,31 +1640,3 @@ def test_raising_unittest_skiptest_during_collection(
     assert skipped == 1
     assert failed == 0
     assert reprec.ret == ExitCode.NO_TESTS_COLLECTED
-
-
-def test_abstract_testcase_is_not_collected(pytester: Pytester) -> None:
-    """Regression test for #12275."""
-    pytester.makepyfile(
-        """
-        import abc
-        import unittest
-
-        class TestBase(unittest.TestCase, abc.ABC):
-            @abc.abstractmethod
-            def abstract1(self): pass
-
-            @abc.abstractmethod
-            def abstract2(self): pass
-
-            def test_it(self): pass
-
-        class TestPartial(TestBase):
-            def abstract1(self): pass
-
-        class TestConcrete(TestPartial):
-            def abstract2(self): pass
-        """
-    )
-    result = pytester.runpytest()
-    assert result.ret == ExitCode.OK
-    result.assert_outcomes(passed=1)

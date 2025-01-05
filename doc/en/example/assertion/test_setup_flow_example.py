@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 def setup_module(module):
     module.TestStateFullThing.classcount = 0
 

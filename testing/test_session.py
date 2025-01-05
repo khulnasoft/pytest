@@ -1,6 +1,4 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 from _pytest.config import ExitCode
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.pytester import Pytester

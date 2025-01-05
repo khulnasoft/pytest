@@ -133,47 +133,27 @@ API for details.
 Temporary directory location and retention
 ------------------------------------------
 
-The temporary directories,
-as returned by the :fixture:`tmp_path` and (now deprecated) :fixture:`tmpdir` fixtures,
-are automatically created under a base temporary directory,
-in a structure that depends on the ``--basetemp`` option:
+Temporary directories are by default created as sub-directories of
+the system temporary directory.  The base name will be ``pytest-NUM`` where
+``NUM`` will be incremented with each test run.
+By default, entries older than 3 temporary directories will be removed.
+This behavior can be configured with :confval:`tmp_path_retention_count` and
+:confval:`tmp_path_retention_policy`.
 
-- By default (when the ``--basetemp`` option is not set),
-  the temporary directories will follow this template:
+Using the ``--basetemp``
+option will remove the directory before every run, effectively meaning the temporary directories
+of only the most recent run will be kept.
 
-  .. code-block:: text
+You can override the default temporary directory setting like this:
 
-      {temproot}/pytest-of-{user}/pytest-{num}/{testname}/
+.. code-block:: bash
 
-  where:
+    pytest --basetemp=mydir
 
-  - ``{temproot}`` is the system temporary directory
-    as determined by :py:func:`tempfile.gettempdir`.
-    It can be overridden by the :envvar:`PYTEST_DEBUG_TEMPROOT` environment variable.
-  - ``{user}`` is the user name running the tests,
-  - ``{num}`` is a number that is incremented with each test suite run
-  - ``{testname}`` is a sanitized version of :py:attr:`the name of the current test <_pytest.nodes.Node.name>`.
+.. warning::
 
-  The auto-incrementing ``{num}`` placeholder provides a basic retention feature
-  and avoids that existing results of previous test runs are blindly removed.
-  By default, the last 3 temporary directories are kept,
-  but this behavior can be configured with
-  :confval:`tmp_path_retention_count` and :confval:`tmp_path_retention_policy`.
-
-- When the ``--basetemp`` option is used (e.g. ``pytest --basetemp=mydir``),
-  it will be used directly as base temporary directory:
-
-  .. code-block:: text
-
-      {basetemp}/{testname}/
-
-  Note that there is no retention feature in this case:
-  only the results of the most recent run will be kept.
-
-  .. warning::
-
-      The directory given to ``--basetemp`` will be cleared blindly before each test run,
-      so make sure to use a directory for that purpose only.
+    The contents of ``mydir`` will be completely removed, so make sure to use a directory
+    for that purpose only.
 
 When distributing tests on the local machine using ``pytest-xdist``, care is taken to
 automatically configure a `basetemp` directory for the sub processes such that all temporary

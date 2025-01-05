@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from _pytest.stash import Stash
 from _pytest.stash import StashKey
 import pytest

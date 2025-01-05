@@ -1,5 +1,3 @@
-:orphan:
-
 .. _toc:
 
 Full pytest documentation

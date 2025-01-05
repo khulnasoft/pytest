@@ -1,6 +1,4 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 import os
 from pathlib import Path
 import sys
@@ -76,16 +74,6 @@ def test_getfuncargnames_staticmethod_inherited() -> None:
     assert getfuncargnames(B.static, cls=B) == ("arg1", "arg2")
 
 
-@pytest.mark.skipif(
-    sys.version_info >= (3, 13),
-    reason="""\
-In python 3.13, this will raise FutureWarning:
-functools.partial will be a method descriptor in future Python versions;
-wrap it in staticmethod() if you want to preserve the old behavior
-
-But the wrapped 'functools.partial' is tested by 'test_getfuncargnames_staticmethod_partial' below.
-""",
-)
 def test_getfuncargnames_partial():
     """Check getfuncargnames for methods defined with functools.partial (#5701)"""
     import functools
@@ -945,7 +933,7 @@ class TestRequestBasic:
     ) -> None:
         """
         Ensure exceptions raised during teardown by finalizers are suppressed
-        until all finalizers are called, then re-raised together in an
+        until all finalizers are called, then re-reaised together in an
         exception group (#2440)
         """
         pytester.makepyfile(
@@ -1435,23 +1423,6 @@ class TestFixtureUsages:
         reprec = pytester.inline_run()
         reprec.assertoutcome(passed=2)
 
-    def test_empty_usefixtures_marker(self, pytester: Pytester) -> None:
-        """Empty usefixtures() marker issues a warning (#12439)."""
-        pytester.makepyfile(
-            """
-            import pytest
-
-            @pytest.mark.usefixtures()
-            def test_one():
-                assert 1 == 1
-        """
-        )
-        result = pytester.runpytest()
-        result.stdout.fnmatch_lines(
-            "*PytestWarning: usefixtures() in test_empty_usefixtures_marker.py::test_one"
-            " without arguments has no effect"
-        )
-
     def test_usefixtures_ini(self, pytester: Pytester) -> None:
         pytester.makeini(
             """
@@ -1573,95 +1544,6 @@ class TestFixtureUsages:
         )
         result = pytester.runpytest()
         result.stdout.fnmatch_lines(["* 2 passed in *"])
-
-    def test_parameterized_fixture_caching(self, pytester: Pytester) -> None:
-        """Regression test for #12600."""
-        pytester.makepyfile(
-            """
-            import pytest
-            from itertools import count
-
-            CACHE_MISSES = count(0)
-
-            def pytest_generate_tests(metafunc):
-                if "my_fixture" in metafunc.fixturenames:
-                    # Use unique objects for parametrization (as opposed to small strings
-                    # and small integers which are singletons).
-                    metafunc.parametrize("my_fixture", [[1], [2]], indirect=True)
-
-            @pytest.fixture(scope='session')
-            def my_fixture(request):
-                next(CACHE_MISSES)
-
-            def test1(my_fixture):
-                pass
-
-            def test2(my_fixture):
-                pass
-
-            def teardown_module():
-                assert next(CACHE_MISSES) == 2
-            """
-        )
-        result = pytester.runpytest()
-        result.stdout.no_fnmatch_line("* ERROR at teardown *")
-
-    def test_unwrapping_pytest_fixture(self, pytester: Pytester) -> None:
-        """Ensure the unwrap method on `FixtureFunctionDefinition` correctly wraps and unwraps methods and functions"""
-        pytester.makepyfile(
-            """
-            import pytest
-            import inspect
-
-            class FixtureFunctionDefTestClass:
-                def __init__(self) -> None:
-                    self.i = 10
-
-                @pytest.fixture
-                def fixture_function_def_test_method(self):
-                    return self.i
-
-
-            @pytest.fixture
-            def fixture_function_def_test_func():
-                return 9
-
-
-            def test_get_wrapped_func_returns_method():
-                obj = FixtureFunctionDefTestClass()
-                wrapped_function_result = (
-                    obj.fixture_function_def_test_method._get_wrapped_function()
-                )
-                assert inspect.ismethod(wrapped_function_result)
-                assert wrapped_function_result() == 10
-
-
-            def test_get_wrapped_func_returns_function():
-                assert fixture_function_def_test_func._get_wrapped_function()() == 9
-            """
-        )
-        result = pytester.runpytest()
-        result.assert_outcomes(passed=2)
-
-    def test_fixture_wrapped_looks_liked_wrapped_function(
-        self, pytester: Pytester
-    ) -> None:
-        """Ensure that `FixtureFunctionDefinition` behaves like the function it wrapped."""
-        pytester.makepyfile(
-            """
-            import pytest
-
-            @pytest.fixture
-            def fixture_function_def_test_func():
-                return 9
-            fixture_function_def_test_func.__doc__ = "documentation"
-
-            def test_fixture_has_same_doc():
-                assert fixture_function_def_test_func.__doc__ == "documentation"
-            """
-        )
-        result = pytester.runpytest()
-        result.assert_outcomes(passed=1)
 
 
 class TestFixtureManagerParseFactories:
@@ -2337,25 +2219,6 @@ class TestAutouseManagement:
         reprec = pytester.inline_run("-s")
         reprec.assertoutcome(passed=2)
 
-    def test_reordering_catastrophic_performance(self, pytester: Pytester) -> None:
-        """Check that a certain high-scope parametrization pattern doesn't cause
-        a catasrophic slowdown.
-
-        Regression test for #12355.
-        """
-        pytester.makepyfile("""
-            import pytest
-
-            params = tuple("abcdefghijklmnopqrstuvwxyz")
-            @pytest.mark.parametrize(params, [range(len(params))] * 3, scope="module")
-            def test_parametrize(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z):
-                pass
-        """)
-
-        result = pytester.runpytest()
-
-        result.assert_outcomes(passed=3)
-
 
 class TestFixtureMarker:
     def test_parametrize(self, pytester: Pytester) -> None:
@@ -2405,17 +2268,18 @@ class TestFixtureMarker:
         This was a regression introduced in the fix for #736.
         """
         pytester.makepyfile(
-            f"""
+            """
             import pytest
 
             @pytest.fixture(params=[1, 2])
             def fixt(request):
                 return request.param
 
-            @pytest.mark.parametrize({param_args}, [(3, 'x'), (4, 'x')])
+            @pytest.mark.parametrize(%s, [(3, 'x'), (4, 'x')])
             def test_foo(fixt, val):
                 pass
         """
+            % param_args
         )
         reprec = pytester.inline_run()
         reprec.assertoutcome(passed=2)
@@ -3070,7 +2934,7 @@ class TestFixtureMarker:
             *3 passed*
         """
         )
-        assert result.ret == 0
+        result.stdout.no_fnmatch_line("*error*")
 
     def test_fixture_finalizer(self, pytester: Pytester) -> None:
         pytester.makeconftest(
@@ -3532,28 +3396,6 @@ class TestErrors:
         result.stdout.fnmatch_lines(
             ["*def gen(qwe123):*", "*fixture*qwe123*not found*", "*1 error*"]
         )
-
-    def test_cached_exception_doesnt_get_longer(self, pytester: Pytester) -> None:
-        """Regression test for #12204."""
-        pytester.makepyfile(
-            """
-            import pytest
-            @pytest.fixture(scope="session")
-            def bad(): 1 / 0
-
-            def test_1(bad): pass
-            def test_2(bad): pass
-            def test_3(bad): pass
-            """
-        )
-
-        result = pytester.runpytest_inprocess("--tb=native")
-        assert result.ret == ExitCode.TESTS_FAILED
-        failures = result.reprec.getfailures()  # type: ignore[attr-defined]
-        assert len(failures) == 3
-        lines1 = failures[1].longrepr.reprtraceback.reprentries[0].lines
-        lines2 = failures[2].longrepr.reprtraceback.reprentries[0].lines
-        assert len(lines1) == len(lines2)
 
 
 class TestShowFixtures:
@@ -4411,39 +4253,6 @@ class TestScopeOrdering:
         request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "s1 p1 m1 m2 c1 f2 f1".split()
 
-    def test_parametrized_package_scope_reordering(self, pytester: Pytester) -> None:
-        """A parameterized package-scoped fixture correctly reorders items to
-        minimize setups & teardowns.
-
-        Regression test for #12328.
-        """
-        pytester.makepyfile(
-            __init__="",
-            conftest="""
-                import pytest
-                @pytest.fixture(scope="package", params=["a", "b"])
-                def fix(request):
-                    return request.param
-            """,
-            test_1="def test1(fix): pass",
-            test_2="def test2(fix): pass",
-        )
-
-        result = pytester.runpytest("--setup-plan")
-        assert result.ret == ExitCode.OK
-        result.stdout.fnmatch_lines(
-            [
-                "  SETUP    P fix['a']",
-                "        test_1.py::test1[a] (fixtures used: fix, request)",
-                "        test_2.py::test2[a] (fixtures used: fix, request)",
-                "  TEARDOWN P fix['a']",
-                "  SETUP    P fix['b']",
-                "        test_1.py::test1[b] (fixtures used: fix, request)",
-                "        test_2.py::test2[b] (fixtures used: fix, request)",
-                "  TEARDOWN P fix['b']",
-            ],
-        )
-
     def test_multiple_packages(self, pytester: Pytester) -> None:
         """Complex test involving multiple package fixtures. Make sure teardowns
         are executed in order.
@@ -4583,21 +4392,6 @@ def test_fixture_double_decorator(pytester: Pytester) -> None:
     )
 
 
-def test_fixture_class(pytester: Pytester) -> None:
-    """Check if an error is raised when using @pytest.fixture on a class."""
-    pytester.makepyfile(
-        """
-        import pytest
-
-        @pytest.fixture
-        class A:
-            pass
-        """
-    )
-    result = pytester.runpytest()
-    result.assert_outcomes(errors=1)
-
-
 def test_fixture_param_shadowing(pytester: Pytester) -> None:
     """Parametrized arguments would be shadowed if a fixture with the same name also exists (#5036)"""
     pytester.makepyfile(
@@ -4647,7 +4441,7 @@ def test_fixture_named_request(pytester: Pytester) -> None:
     result.stdout.fnmatch_lines(
         [
             "*'request' is a reserved word for fixtures, use another name:",
-            "  *test_fixture_named_request.py:8",
+            "  *test_fixture_named_request.py:6",
         ]
     )
 

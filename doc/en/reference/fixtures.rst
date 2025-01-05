@@ -39,7 +39,7 @@ Built-in fixtures
         Store and retrieve values across pytest runs.
 
    :fixture:`doctest_namespace`
-        Provide a dict injected into the doctests namespace.
+        Provide a dict injected into the docstests namespace.
 
    :fixture:`monkeypatch`
        Temporarily modify classes, functions, dictionaries,

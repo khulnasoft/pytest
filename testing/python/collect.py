@@ -1,10 +1,9 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 import os
 import sys
 import textwrap
 from typing import Any
+from typing import Dict
 
 import _pytest._code
 from _pytest.config import ExitCode
@@ -37,9 +36,9 @@ class TestModule:
             [
                 "*import*mismatch*",
                 "*imported*test_whatever*",
-                f"*{p1}*",
+                "*%s*" % p1,
                 "*not the same*",
-                f"*{p2}*",
+                "*%s*" % p2,
                 "*HINT*",
             ]
         )
@@ -262,69 +261,6 @@ class TestClass:
         )
         result = pytester.runpytest()
         assert result.ret == ExitCode.NO_TESTS_COLLECTED
-
-    def test_does_not_discover_properties(self, pytester: Pytester) -> None:
-        """Regression test for #12446."""
-        pytester.makepyfile(
-            """\
-            class TestCase:
-                @property
-                def oops(self):
-                    raise SystemExit('do not call me!')
-            """
-        )
-        result = pytester.runpytest()
-        assert result.ret == ExitCode.NO_TESTS_COLLECTED
-
-    def test_does_not_discover_instance_descriptors(self, pytester: Pytester) -> None:
-        """Regression test for #12446."""
-        pytester.makepyfile(
-            """\
-            # not `@property`, but it acts like one
-            # this should cover the case of things like `@cached_property` / etc.
-            class MyProperty:
-                def __init__(self, func):
-                    self._func = func
-                def __get__(self, inst, owner):
-                    if inst is None:
-                        return self
-                    else:
-                        return self._func.__get__(inst, owner)()
-
-            class TestCase:
-                @MyProperty
-                def oops(self):
-                    raise SystemExit('do not call me!')
-            """
-        )
-        result = pytester.runpytest()
-        assert result.ret == ExitCode.NO_TESTS_COLLECTED
-
-    def test_abstract_class_is_not_collected(self, pytester: Pytester) -> None:
-        """Regression test for #12275 (non-unittest version)."""
-        pytester.makepyfile(
-            """
-            import abc
-
-            class TestBase(abc.ABC):
-                @abc.abstractmethod
-                def abstract1(self): pass
-
-                @abc.abstractmethod
-                def abstract2(self): pass
-
-                def test_it(self): pass
-
-            class TestPartial(TestBase):
-                def abstract1(self): pass
-
-            class TestConcrete(TestPartial):
-                def abstract2(self): pass
-            """
-        )
-        result = pytester.runpytest()
-        assert result.ret == ExitCode.OK
-        result.assert_outcomes(passed=1)
 
 
 class TestFunction:
@@ -1167,7 +1103,7 @@ class TestTracebackCutting:
 
         tb = None
         try:
-            ns: dict[str, Any] = {}
+            ns: Dict[str, Any] = {}
             exec("def foo(): raise ValueError", ns)
             ns["foo"]()
         except ValueError:

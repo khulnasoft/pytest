@@ -1,7 +1,4 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
-from collections.abc import Generator
 import contextlib
 import io
 from io import UnsupportedOperation
@@ -11,6 +8,7 @@ import sys
 import textwrap
 from typing import BinaryIO
 from typing import cast
+from typing import Generator
 from typing import TextIO
 
 from _pytest import capture
@@ -105,15 +103,16 @@ class TestCaptureManager:
 def test_capturing_unicode(pytester: Pytester, method: str) -> None:
     obj = "'b\u00f6y'"
     pytester.makepyfile(
-        f"""\
+        """\
         # taken from issue 227 from nosetests
         def test_unicode():
             import sys
             print(sys.stdout)
-            print({obj})
+            print(%s)
         """
+        % obj
     )
-    result = pytester.runpytest(f"--capture={method}")
+    result = pytester.runpytest("--capture=%s" % method)
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
@@ -125,7 +124,7 @@ def test_capturing_bytes_in_utf8_encoding(pytester: Pytester, method: str) -> No
             print('b\\u00f6y')
         """
     )
-    result = pytester.runpytest(f"--capture={method}")
+    result = pytester.runpytest("--capture=%s" % method)
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
@@ -939,7 +938,7 @@ def test_captureresult() -> None:
 
 
 @pytest.fixture
-def tmpfile(pytester: Pytester) -> Generator[BinaryIO]:
+def tmpfile(pytester: Pytester) -> Generator[BinaryIO, None, None]:
     f = pytester.makepyfile("").open("wb+")
     yield f
     if not f.closed:

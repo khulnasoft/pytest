@@ -1,7 +1,9 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 import sys
+from typing import List
+from typing import Optional
+from typing import Type
+from typing import Union
 import warnings
 
 import pytest
@@ -52,7 +54,7 @@ class TestSubclassWarningPop:
         pass
 
     @staticmethod
-    def raise_warnings_from_list(_warnings: list[type[Warning]]):
+    def raise_warnings_from_list(_warnings: List[Type[Warning]]):
         for warn in _warnings:
             warnings.warn(f"Warning {warn().__repr__()}", warn)
 
@@ -132,7 +134,7 @@ class TestWarningsRecorderChecker:
 class TestDeprecatedCall:
     """test pytest.deprecated_call()"""
 
-    def dep(self, i: int, j: int | None = None) -> int:
+    def dep(self, i: int, j: Optional[int] = None) -> int:
         if i == 0:
             warnings.warn("is deprecated", DeprecationWarning, stacklevel=1)
         return 42
@@ -561,7 +563,7 @@ def test_raise_type_error_on_invalid_warning() -> None:
         pytest.param(Warning(), id="Warning"),
     ],
 )
-def test_no_raise_type_error_on_valid_warning(message: str | Warning) -> None:
+def test_no_raise_type_error_on_valid_warning(message: Union[str, Warning]) -> None:
     """Check pytest.warns validates warning messages are strings (#10865) or
     Warning instances (#11959)."""
     with pytest.warns(Warning):

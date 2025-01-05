@@ -7,6 +7,9 @@ API Reference
 
 This page contains the full reference to pytest's API.
 
+.. contents::
+    :depth: 3
+    :local:
 
 Constants
 ---------
@@ -54,7 +57,7 @@ pytest.fail
 
 **Tutorial**: :ref:`skipping`
 
-.. autofunction:: pytest.fail(reason, [pytrace=True])
+.. autofunction:: pytest.fail(reason, [pytrace=True, msg=None])
 
 .. class:: pytest.fail.Exception
 
@@ -63,7 +66,7 @@ pytest.fail
 pytest.skip
 ~~~~~~~~~~~
 
-.. autofunction:: pytest.skip(reason, [allow_module_level=False])
+.. autofunction:: pytest.skip(reason, [allow_module_level=False, msg=None])
 
 .. class:: pytest.skip.Exception
 
@@ -88,7 +91,7 @@ pytest.xfail
 pytest.exit
 ~~~~~~~~~~~
 
-.. autofunction:: pytest.exit(reason, [returncode=None])
+.. autofunction:: pytest.exit(reason, [returncode=None, msg=None])
 
 .. class:: pytest.exit.Exception
 
@@ -529,14 +532,13 @@ record_testsuite_property
 recwarn
 ~~~~~~~
 
-**Tutorial**: :ref:`recwarn`
+**Tutorial**: :ref:`assertwarnings`
 
 .. autofunction:: _pytest.recwarn.recwarn()
     :no-auto-options:
 
 .. autoclass:: pytest.WarningsRecorder()
     :members:
-    :special-members: __getitem__, __iter__, __len__
 
 
 .. fixture:: request
@@ -651,7 +653,7 @@ Reference to all hooks which can be implemented by :ref:`conftest.py files <loca
 Bootstrapping hooks
 ~~~~~~~~~~~~~~~~~~~
 
-Bootstrapping hooks called for plugins registered early enough (internal and third-party plugins).
+Bootstrapping hooks called for plugins registered early enough (internal and setuptools plugins).
 
 .. hook:: pytest_load_initial_conftests
 .. autofunction:: pytest_load_initial_conftests
@@ -1014,13 +1016,6 @@ PytestPluginManager
     :inherited-members:
     :show-inheritance:
 
-TerminalReporter
-~~~~~~~~~~~~~~~~
-
-.. autoclass:: pytest.TerminalReporter
-    :members:
-    :inherited-members:
-
 TestReport
 ~~~~~~~~~~
 
@@ -1128,11 +1123,11 @@ Environment variables that can be used to change pytest's behavior.
 
 .. envvar:: CI
 
-When set (regardless of value), pytest acknowledges that is running in a CI process. Alternative to ``BUILD_NUMBER`` variable. See also :ref:`ci-pipelines`.
+When set (regardless of value), pytest acknowledges that is running in a CI process. Alternative to ``BUILD_NUMBER`` variable.
 
 .. envvar:: BUILD_NUMBER
 
-When set (regardless of value), pytest acknowledges that is running in a CI process. Alternative to CI variable. See also :ref:`ci-pipelines`.
+When set (regardless of value), pytest acknowledges that is running in a CI process. Alternative to CI variable.
 
 .. envvar:: PYTEST_ADDOPTS
 
@@ -1153,16 +1148,10 @@ processes can inspect it, see :ref:`pytest current test env` for more informatio
 
 When set, pytest will print tracing and debug information.
 
-.. envvar:: PYTEST_DEBUG_TEMPROOT
-
-Root for temporary directories produced by fixtures like :fixture:`tmp_path`
-as discussed in :ref:`temporary directory location and retention`.
-
 .. envvar:: PYTEST_DISABLE_PLUGIN_AUTOLOAD
 
-When set, disables plugin auto-loading through :std:doc:`entry point packaging
-metadata <packaging:guides/creating-and-discovering-plugins>`. Only explicitly
-specified plugins will be loaded.
+When set, disables plugin auto-loading through setuptools entrypoints. Only explicitly specified plugins will be
+loaded.
 
 .. envvar:: PYTEST_PLUGINS
 
@@ -1234,8 +1223,14 @@ Custom warnings generated in some situations such as improper usage or deprecate
 .. autoclass:: pytest.PytestExperimentalApiWarning
    :show-inheritance:
 
+.. autoclass:: pytest.PytestReturnNotNoneWarning
+  :show-inheritance:
+
 .. autoclass:: pytest.PytestRemovedIn9Warning
   :show-inheritance:
+
+.. autoclass:: pytest.PytestUnhandledCoroutineWarning
+   :show-inheritance:
 
 .. autoclass:: pytest.PytestUnknownMarkWarning
    :show-inheritance:
@@ -1294,46 +1289,12 @@ passed multiple times. The expected format is ``name=value``. For example::
 
 .. confval:: cache_dir
 
-   Sets the directory where the cache plugin's content is stored. Default directory is
+   Sets a directory where stores content of cache plugin. Default directory is
    ``.pytest_cache`` which is created in :ref:`rootdir <rootdir>`. Directory may be
    relative or absolute path. If setting relative path, then directory is created
-   relative to :ref:`rootdir <rootdir>`. Additionally, a path may contain environment
+   relative to :ref:`rootdir <rootdir>`. Additionally path may contain environment
    variables, that will be expanded. For more information about cache plugin
    please refer to :ref:`cache_provider`.
-
-.. confval:: collect_imported_tests
-
-   .. versionadded:: 8.4
-
-   Setting this to ``false`` will make pytest collect classes/functions from test
-   files **only** if they are defined in that file (as opposed to imported there).
-
-   .. code-block:: ini
-
-        [pytest]
-        collect_imported_tests = false
-
-   Default: ``true``
-
-   pytest traditionally collects classes/functions in the test module namespace even if they are imported from another file.
-
-   For example:
-
-   .. code-block:: python
-
-       # contents of src/domain.py
-       class Testament: ...
-
-
-       # contents of tests/test_testament.py
-       from domain import Testament
-
-
-       def test_testament(): ...
-
-   In this scenario, with the default options, pytest will collect the class `Testament` from `tests/test_testament.py` because it starts with `Test`, even though in this case it is a production class being imported in the test module namespace.
-
-   Set ``collected_imported_tests`` to ``false`` in the configuration file prevents that.
 
 .. confval:: consider_namespace_packages
 
@@ -1365,29 +1326,6 @@ passed multiple times. The expected format is ``name=value``. For example::
         [pytest]
         console_output_style = classic
 
-
-.. confval:: disable_test_id_escaping_and_forfeit_all_rights_to_community_support
-
-   .. versionadded:: 4.4
-
-   pytest by default escapes any non-ascii characters used in unicode strings
-   for the parametrization because it has several downsides.
-   If however you would like to use unicode strings in parametrization
-   and see them in the terminal as is (non-escaped), use this option
-   in your ``pytest.ini``:
-
-   .. code-block:: ini
-
-       [pytest]
-       disable_test_id_escaping_and_forfeit_all_rights_to_community_support = True
-
-   Keep in mind however that this might cause unwanted side effects and
-   even bugs depending on the OS used and plugins currently installed,
-   so use it at your own risk.
-
-   Default: ``False``.
-
-   See :ref:`parametrizemark`.
 
 .. confval:: doctest_encoding
 
@@ -1766,13 +1704,13 @@ passed multiple times. The expected format is ``name=value``. For example::
    This would tell ``pytest`` to not look into typical subversion or
    sphinx-build directories or into any ``tmp`` prefixed directory.
 
-   Additionally, ``pytest`` will attempt to intelligently identify and ignore
-   a virtualenv.  Any directory deemed to be the root of a virtual environment
-   will not be considered during test collection unless
-   ``--collect-in-virtualenv`` is given.  Note also that ``norecursedirs``
-   takes precedence over ``--collect-in-virtualenv``; e.g. if you intend to
-   run tests in a virtualenv with a base directory that matches ``'.*'`` you
-   *must* override ``norecursedirs`` in addition to using the
+   Additionally, ``pytest`` will attempt to intelligently identify and ignore a
+   virtualenv by the presence of an activation script.  Any directory deemed to
+   be the root of a virtual environment will not be considered during test
+   collection unless ``--collect-in-virtualenv`` is given.  Note also that
+   ``norecursedirs`` takes precedence over ``--collect-in-virtualenv``; e.g. if
+   you intend to run tests in a virtualenv with a base directory that matches
+   ``'.*'`` you *must* override ``norecursedirs`` in addition to using the
    ``--collect-in-virtualenv`` flag.
 
 
@@ -1853,6 +1791,11 @@ passed multiple times. The expected format is ``name=value``. For example::
         [pytest]
         pythonpath = src1 src2
 
+   .. note::
+
+        ``pythonpath`` does not affect some imports that happen very early,
+        most notably plugins loaded using the ``-p`` command line option.
+
 
 .. confval:: required_plugins
 
@@ -1895,7 +1838,10 @@ passed multiple times. The expected format is ``name=value``. For example::
 
        pytest testing doc
 
+
 .. confval:: tmp_path_retention_count
+
+
 
    How many sessions should we keep the `tmp_path` directories,
    according to `tmp_path_retention_policy`.
@@ -1922,49 +1868,9 @@ passed multiple times. The expected format is ``name=value``. For example::
    .. code-block:: ini
 
         [pytest]
-        tmp_path_retention_policy = all
+        tmp_path_retention_policy = "all"
 
    Default: ``all``
-
-
-.. confval:: truncation_limit_chars
-
-   Controls maximum number of characters to truncate assertion message contents.
-
-   Setting value to ``0`` disables the character limit for truncation.
-
-   .. code-block:: ini
-
-       [pytest]
-       truncation_limit_chars = 640
-
-   pytest truncates the assert messages to a certain limit by default to prevent comparison with large data to overload the console output.
-
-   Default: ``640``
-
-   .. note::
-
-        If pytest detects it is :ref:`running on CI <ci-pipelines>`, truncation is disabled automatically.
-
-
-.. confval:: truncation_limit_lines
-
-   Controls maximum number of linesto truncate assertion message contents.
-
-   Setting value to ``0`` disables the lines limit for truncation.
-
-   .. code-block:: ini
-
-       [pytest]
-       truncation_limit_lines = 8
-
-   pytest truncates the assert messages to a certain limit by default to prevent comparison with large data to overload the console output.
-
-   Default: ``8``
-
-   .. note::
-
-        If pytest detects it is :ref:`running on CI <ci-pipelines>`, truncation is disabled automatically.
 
 
 .. confval:: usefixtures
@@ -2034,7 +1940,7 @@ All the command-line flags can be obtained by running ``pytest --help``::
 
     general:
       -k EXPRESSION         Only run tests which match the given substring
-                            expression. An expression is a Python evaluable
+                            expression. An expression is a Python evaluatable
                             expression where all names are substring-matched
                             against test names and their parent classes.
                             Example: -k 'test_method or test_other' matches all
@@ -2098,7 +2004,6 @@ All the command-line flags can be obtained by running ``pytest --help``::
       -v, --verbose         Increase verbosity
       --no-header           Disable header
       --no-summary          Disable summary
-      --no-fold-skipped     Do not fold skipped tests in short summary.
       -q, --quiet           Decrease verbosity
       --verbosity=VERBOSE   Set verbosity. Default: 0.
       -r chars              Show extra test summary info as specified by chars:
@@ -2114,7 +2019,6 @@ All the command-line flags can be obtained by running ``pytest --help``::
                             passed through addopts)
       --tb=style            Traceback print mode
                             (auto/long/short/line/native/no)
-      --xfail-tb            Show tracebacks for xfail (as long as --tb != no)
       --show-capture={no,stdout,stderr,log,all}
                             Controls how captured stdout/stderr/log is shown on
                             failed tests. Default: all.
@@ -2340,8 +2244,6 @@ All the command-line flags can be obtained by running ``pytest --help``::
                             Plugins that must be present for pytest to run
 
     Environment variables:
-      CI                       When set (regardless of value), pytest knows it is running in a CI process and does not truncate summary info
-      BUILD_NUMBER             Equivalent to CI
       PYTEST_ADDOPTS           Extra command line options
       PYTEST_PLUGINS           Comma-separated plugins to load during startup
       PYTEST_DISABLE_PLUGIN_AUTOLOAD Set to disable plugin auto-loading

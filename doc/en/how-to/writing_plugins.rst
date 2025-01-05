@@ -16,8 +16,8 @@ reporting by calling :ref:`well specified hooks <hook-reference>` of the followi
 
 * builtin plugins: loaded from pytest's internal ``_pytest`` directory.
 
-* :ref:`external plugins <extplugins>`: installed third-party modules discovered
-  through :ref:`entry points <pip-installable plugins>` in their packaging metadata
+* :ref:`external plugins <extplugins>`: modules discovered through
+  `setuptools entry points`_
 
 * `conftest.py plugins`_: modules auto-discovered in test directories
 
@@ -42,9 +42,7 @@ Plugin discovery order at tool startup
 3. by scanning the command line for the ``-p name`` option
    and loading the specified plugin. This happens before normal command-line parsing.
 
-4. by loading all plugins registered through installed third-party package
-   :ref:`entry points <pip-installable plugins>`, unless the
-   :envvar:`PYTEST_DISABLE_PLUGIN_AUTOLOAD` environment variable is set.
+4. by loading all plugins registered through `setuptools entry points`_.
 
 5. by loading all plugins specified through the :envvar:`PYTEST_PLUGINS` environment variable.
 
@@ -144,8 +142,7 @@ Making your plugin installable by others
 If you want to make your plugin externally available, you
 may define a so-called entry point for your distribution so
 that ``pytest`` finds your plugin module. Entry points are
-a feature that is provided by :std:doc:`packaging tools
-<packaging:specifications/entry-points>`.
+a feature that is provided by :std:doc:`setuptools <setuptools:index>`.
 
 pytest looks up the ``pytest11`` entrypoint to discover its
 plugins, thus you can make your plugin available by defining
@@ -268,9 +265,8 @@ of the variable will also be loaded as plugins, and so on.
     tests root directory is deprecated, and will raise a warning.
 
 This mechanism makes it easy to share fixtures within applications or even
-external applications without the need to create external plugins using the
-:std:doc:`entry point packaging metadata
-<packaging:guides/creating-and-discovering-plugins>` technique.
+external applications without the need to create external plugins using
+the ``setuptools``'s entry point technique.
 
 Plugins imported by :globalvar:`pytest_plugins` will also automatically be marked
 for assertion rewriting (see :func:`pytest.register_assert_rewrite`).

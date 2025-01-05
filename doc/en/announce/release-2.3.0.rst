@@ -6,10 +6,10 @@ and parametrized testing in Python.  It is now easier, more efficient and
 more predictable to re-run the same tests with different fixture
 instances.  Also, you can directly declare the caching "scope" of
 fixtures so that dependent tests throughout your whole test suite can
-reuse database or other expensive fixture objects with ease.  Lastly,
+re-use database or other expensive fixture objects with ease.  Lastly,
 it's possible for fixture functions (formerly known as funcarg
 factories) to use other fixtures, allowing for a completely modular and
-reusable fixture design.
+re-usable fixture design.
 
 For detailed info and tutorial-style examples, see:
 

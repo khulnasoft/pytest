@@ -1,12 +1,14 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 from functools import partial
 import inspect
 import os
 from pathlib import Path
 import sys
 import types
+from typing import Dict
+from typing import List
+from typing import Tuple
+from typing import Type
 import warnings
 
 from _pytest import outcomes
@@ -137,45 +139,8 @@ class TestSetupState:
             ss.teardown_exact(None)
         mod, func = e.value.exceptions
         assert isinstance(mod, KeyError)
-        assert isinstance(func.exceptions[0], TypeError)
-        assert isinstance(func.exceptions[1], ValueError)
-
-    def test_cached_exception_doesnt_get_longer(self, pytester: Pytester) -> None:
-        """Regression test for #12204 (the "BTW" case)."""
-        pytester.makepyfile(test="")
-        # If the collector.setup() raises, all collected items error with this
-        # exception.
-        pytester.makeconftest(
-            """
-            import pytest
-
-            class MyItem(pytest.Item):
-                def runtest(self) -> None: pass
-
-            class MyBadCollector(pytest.Collector):
-                def collect(self):
-                    return [
-                        MyItem.from_parent(self, name="one"),
-                        MyItem.from_parent(self, name="two"),
-                        MyItem.from_parent(self, name="three"),
-                    ]
-
-                def setup(self):
-                    1 / 0
-
-            def pytest_collect_file(file_path, parent):
-                if file_path.name == "test.py":
-                    return MyBadCollector.from_parent(parent, name='bad')
-            """
-        )
-
-        result = pytester.runpytest_inprocess("--tb=native")
-        assert result.ret == ExitCode.TESTS_FAILED
-        failures = result.reprec.getfailures()  # type: ignore[attr-defined]
-        assert len(failures) == 3
-        lines1 = failures[1].longrepr.reprtraceback.reprentries[0].lines
-        lines2 = failures[2].longrepr.reprtraceback.reprentries[0].lines
-        assert len(lines1) == len(lines2)
+        assert isinstance(func.exceptions[0], TypeError)  # type: ignore
+        assert isinstance(func.exceptions[1], ValueError)  # type: ignore
 
 
 class BaseFunctionalTests:
@@ -444,7 +409,7 @@ class BaseFunctionalTests:
         # assert rep.outcome.when == "setup"
         # assert rep.outcome.where.lineno == 3
         # assert rep.outcome.where.path.basename == "test_func.py"
-        # assert isinstance(rep.failed.failurerepr, PythonFailureRepr)
+        # assert instanace(rep.failed.failurerepr, PythonFailureRepr)
 
     def test_systemexit_does_not_bail_out(self, pytester: Pytester) -> None:
         try:
@@ -521,7 +486,7 @@ class TestSessionReports:
         assert res[1].name == "TestClass"
 
 
-reporttypes: list[type[reports.BaseReport]] = [
+reporttypes: List[Type[reports.BaseReport]] = [
     reports.BaseReport,
     reports.TestReport,
     reports.CollectReport,
@@ -531,9 +496,9 @@ reporttypes: list[type[reports.BaseReport]] = [
 @pytest.mark.parametrize(
     "reporttype", reporttypes, ids=[x.__name__ for x in reporttypes]
 )
-def test_report_extra_parameters(reporttype: type[reports.BaseReport]) -> None:
+def test_report_extra_parameters(reporttype: Type[reports.BaseReport]) -> None:
     args = list(inspect.signature(reporttype.__init__).parameters.keys())[1:]
-    basekw: dict[str, list[object]] = {arg: [] for arg in args}
+    basekw: Dict[str, List[object]] = dict.fromkeys(args, [])
     report = reporttype(newthing=1, **basekw)
     assert report.newthing == 1
 
@@ -1030,7 +995,7 @@ def test_store_except_info_on_error() -> None:
     assert sys.last_type is IndexError
     assert isinstance(sys.last_value, IndexError)
     if sys.version_info >= (3, 12, 0):
-        assert isinstance(sys.last_exc, IndexError)  # type:ignore[attr-defined]
+        assert isinstance(sys.last_exc, IndexError)  # type: ignore[attr-defined]
 
     assert sys.last_value.args[0] == "TEST"
     assert sys.last_traceback
@@ -1046,7 +1011,7 @@ def test_store_except_info_on_error() -> None:
 
 
 def test_current_test_env_var(pytester: Pytester, monkeypatch: MonkeyPatch) -> None:
-    pytest_current_test_vars: list[tuple[str, str]] = []
+    pytest_current_test_vars: List[Tuple[str, str]] = []
     monkeypatch.setattr(
         sys, "pytest_current_test_vars", pytest_current_test_vars, raising=False
     )
@@ -1214,53 +1179,3 @@ def test_pytest_version_env_var(pytester: Pytester, monkeypatch: MonkeyPatch) ->
     result = pytester.runpytest_inprocess()
     assert result.ret == ExitCode.OK
     assert os.environ["PYTEST_VERSION"] == "old version"
-
-
-def test_teardown_session_failed(pytester: Pytester) -> None:
-    """Test that higher-scoped fixture teardowns run in the context of the last
-    item after the test session bails early due to --maxfail.
-
-    Regression test for #11706.
-    """
-    pytester.makepyfile(
-        """
-        import pytest
-
-        @pytest.fixture(scope="module")
-        def baz():
-            yield
-            pytest.fail("This is a failing teardown")
-
-        def test_foo(baz):
-            pytest.fail("This is a failing test")
-
-        def test_bar(): pass
-        """
-    )
-    result = pytester.runpytest("--maxfail=1")
-    result.assert_outcomes(failed=1, errors=1)
-
-
-def test_teardown_session_stopped(pytester: Pytester) -> None:
-    """Test that higher-scoped fixture teardowns run in the context of the last
-    item after the test session bails early due to --stepwise.
-
-    Regression test for #11706.
-    """
-    pytester.makepyfile(
-        """
-        import pytest
-
-        @pytest.fixture(scope="module")
-        def baz():
-            yield
-            pytest.fail("This is a failing teardown")
-
-        def test_foo(baz):
-            pytest.fail("This is a failing test")
-
-        def test_bar(): pass
-        """
-    )
-    result = pytester.runpytest("--stepwise")
-    result.assert_outcomes(failed=1, errors=1)

@@ -1,8 +1,4 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
-from collections.abc import Iterator
-from collections.abc import Sequence
 import dataclasses
 import itertools
 import re
@@ -10,6 +6,13 @@ import sys
 import textwrap
 from typing import Any
 from typing import cast
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 import hypothesis
 from hypothesis import strategies
@@ -32,7 +35,7 @@ class TestMetafunc:
         # on the funcarg level, so we don't need a full blown
         # initialization.
         class FuncFixtureInfoMock:
-            name2fixturedefs: dict[str, list[fixtures.FixtureDef[object]]] = {}
+            name2fixturedefs: Dict[str, List[fixtures.FixtureDef[object]]] = {}
 
             def __init__(self, names):
                 self.names_closure = names
@@ -98,7 +101,7 @@ class TestMetafunc:
             def __repr__(self):
                 return "Exc(from_gen)"
 
-        def gen() -> Iterator[int | None | Exc]:
+        def gen() -> Iterator[Union[int, None, Exc]]:
             yield 0
             yield None
             yield Exc()
@@ -153,7 +156,7 @@ class TestMetafunc:
             _scope: Scope
 
         fixtures_defs = cast(
-            dict[str, Sequence[fixtures.FixtureDef[object]]],
+            Dict[str, Sequence[fixtures.FixtureDef[object]]],
             dict(
                 session_fix=[DummyFixtureDef(Scope.Session)],
                 package_fix=[DummyFixtureDef(Scope.Package)],
@@ -343,7 +346,7 @@ class TestMetafunc:
 
         option = "disable_test_id_escaping_and_forfeit_all_rights_to_community_support"
 
-        values: list[tuple[str, Any, str]] = [
+        values: List[Tuple[str, Any, str]] = [
             ("ação", MockConfig({option: True}), "ação"),
             ("ação", MockConfig({option: False}), "a\\xe7\\xe3o"),
         ]
@@ -513,7 +516,7 @@ class TestMetafunc:
     def test_idmaker_idfn(self) -> None:
         """#351"""
 
-        def ids(val: object) -> str | None:
+        def ids(val: object) -> Optional[str]:
             if isinstance(val, Exception):
                 return repr(val)
             return None
@@ -576,7 +579,7 @@ class TestMetafunc:
 
         option = "disable_test_id_escaping_and_forfeit_all_rights_to_community_support"
 
-        values: list[tuple[Any, str]] = [
+        values: List[Tuple[Any, str]] = [
             (MockConfig({option: True}), "ação"),
             (MockConfig({option: False}), "a\\xe7\\xe3o"),
         ]
@@ -614,44 +617,13 @@ class TestMetafunc:
 
         option = "disable_test_id_escaping_and_forfeit_all_rights_to_community_support"
 
-        values: list[tuple[Any, str]] = [
+        values: List[Tuple[Any, str]] = [
             (MockConfig({option: True}), "ação"),
             (MockConfig({option: False}), "a\\xe7\\xe3o"),
         ]
         for config, expected in values:
             result = IdMaker(
                 ("a",), [pytest.param("string")], None, ["ação"], config, None, None
-            ).make_unique_parameterset_ids()
-            assert result == [expected]
-
-    def test_idmaker_with_param_id_and_config(self) -> None:
-        """Unit test for expected behavior to create ids with pytest.param(id=...) and
-        disable_test_id_escaping_and_forfeit_all_rights_to_community_support
-        option (#9037).
-        """
-
-        class MockConfig:
-            def __init__(self, config):
-                self.config = config
-
-            def getini(self, name):
-                return self.config[name]
-
-        option = "disable_test_id_escaping_and_forfeit_all_rights_to_community_support"
-
-        values: list[tuple[Any, str]] = [
-            (MockConfig({option: True}), "ação"),
-            (MockConfig({option: False}), "a\\xe7\\xe3o"),
-        ]
-        for config, expected in values:
-            result = IdMaker(
-                ("a",),
-                [pytest.param("string", id="ação")],
-                None,
-                None,
-                config,
-                None,
-                None,
             ).make_unique_parameterset_ids()
             assert result == [expected]
 
@@ -1035,14 +1007,14 @@ class TestMetafunc:
         result.stdout.re_match_lines(
             [
                 r"    <Function test1\[0-3\]>",
-                r"    <Function test3\[0\]>",
                 r"    <Function test1\[0-4\]>",
-                r"    <Function test3\[1\]>",
+                r"    <Function test3\[0\]>",
                 r"    <Function test1\[1-3\]>",
-                r"    <Function test3\[2\]>",
                 r"    <Function test1\[1-4\]>",
+                r"    <Function test3\[1\]>",
                 r"    <Function test1\[2-3\]>",
                 r"    <Function test1\[2-4\]>",
+                r"    <Function test3\[2\]>",
                 r"    <Function test2>",
             ]
         )
@@ -1438,13 +1410,13 @@ class TestMetafuncFunctional:
         self, pytester: Pytester, scope: str, length: int
     ) -> None:
         pytester.makepyfile(
-            f"""
+            """
             import pytest
             values = []
             def pytest_generate_tests(metafunc):
                 if "arg" in metafunc.fixturenames:
                     metafunc.parametrize("arg", [1,2], indirect=True,
-                                         scope={scope!r})
+                                         scope=%r)
             @pytest.fixture
             def arg(request):
                 values.append(request.param)
@@ -1454,8 +1426,9 @@ class TestMetafuncFunctional:
             def test_world(arg):
                 assert arg in (1,2)
             def test_checklength():
-                assert len(values) == {length}
+                assert len(values) == %d
         """
+            % (scope, length)
         )
         reprec = pytester.inline_run()
         reprec.assertoutcome(passed=5)
@@ -1775,9 +1748,9 @@ class TestMetafuncFunctionalAuto:
         self, pytester: Pytester, monkeypatch
     ) -> None:
         """Integration test for (#3941)"""
-        class_fix_setup: list[object] = []
+        class_fix_setup: List[object] = []
         monkeypatch.setattr(sys, "class_fix_setup", class_fix_setup, raising=False)
-        func_fix_setup: list[object] = []
+        func_fix_setup: List[object] = []
         monkeypatch.setattr(sys, "func_fix_setup", func_fix_setup, raising=False)
 
         pytester.makepyfile(

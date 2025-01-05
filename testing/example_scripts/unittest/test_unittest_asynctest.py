@@ -1,14 +1,13 @@
 # mypy: allow-untyped-defs
 """Issue #7110"""
 
-from __future__ import annotations
-
 import asyncio
+from typing import List
 
 import asynctest
 
 
-teardowns: list[None] = []
+teardowns: List[None] = []
 
 
 class Test(asynctest.TestCase):

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import errno
 import os
 import sys
+from typing import Callable
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
@@ -41,7 +41,7 @@ _winerrnomap = {
     3: errno.ENOENT,
     17: errno.EEXIST,
     18: errno.EXDEV,
-    13: errno.EBUSY,  # empty cd drive, but ENOMEDIUM seems unavailable
+    13: errno.EBUSY,  # empty cd drive, but ENOMEDIUM seems unavailiable
     22: errno.ENOTDIR,
     20: errno.ENOTDIR,
     267: errno.ENOTDIR,
@@ -69,7 +69,7 @@ class ErrorMaker:
         try:
             return self._errno2class[eno]
         except KeyError:
-            clsname = errno.errorcode.get(eno, f"UnknownErrno{eno}")
+            clsname = errno.errorcode.get(eno, "UnknownErrno%d" % (eno,))
             errorcls = type(
                 clsname,
                 (Error,),

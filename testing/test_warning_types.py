@@ -1,6 +1,4 @@
 # mypy: allow-untyped-defs
-from __future__ import annotations
-
 import inspect
 
 from _pytest import warning_types
